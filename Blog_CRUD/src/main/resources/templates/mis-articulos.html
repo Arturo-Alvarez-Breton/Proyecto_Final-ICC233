@@ -1,0 +1,546 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Mis Artículos</title>
+    <link
+            rel="stylesheet"
+            href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
+    />
+    <link
+            rel="stylesheet"
+            href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css"
+    />
+    <style>
+        .navbar {
+            margin-bottom: 20px;
+        }
+        .table-actions {
+            white-space: nowrap;
+            min-width: 200px;
+        }
+        .etiqueta-input {
+            max-width: 150px;
+            display: inline-block;
+        }
+        .navbar .dropdown-toggle::after {
+            vertical-align: middle;
+        }
+
+        .user-avatar {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            object-fit: cover;
+            margin-right: 8px;
+        }
+    </style>
+</head>
+<body>
+<nav class="navbar navbar-expand-lg navbar-light bg-light">
+    <div class="container-fluid">
+        <a class="navbar-brand" href="/index">Blog</a>
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navbarNav">
+            <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+                <li class="nav-item"><a class="nav-link" href="/index">Home</a></li>
+                <li class="nav-item"><a class="nav-link" href="/mis-articulos">Mis Artículos</a></li>
+                <li class="nav-item"><a class="nav-link" href="/usuarios" th:if="${usuario.admin}">Usuarios</a></li>
+                <li class="nav-item">
+                    <a class="nav-link" href="/admin/chats"
+                       th:if="${usuario != null and usuario.admin}">
+                        Chats
+                    </a>
+                </li>
+            </ul>
+
+
+
+            <!-- Menú desplegable de usuario -->
+            <div class="dropdown">
+                <a class="btn btn-link text-decoration-none dropdown-toggle d-flex align-items-center"
+                   href="#" role="button" id="dropdownMenuLink"
+                   data-bs-toggle="dropdown" aria-expanded="false">
+                    <img th:if="${usuario.fotoBase64}"
+                         th:src="@{'data:' + ${usuario.fotoMimeType} + ';base64,' + ${usuario.fotoBase64}}"
+                         class="user-avatar">
+                    <img th:unless="${usuario.fotoBase64}"
+                         src="/img/avatar-default.png"
+                         class="user-avatar">
+                    <span class="text-dark" th:text="${usuario.nombre}"></span>
+                </a>
+
+                <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="dropdownMenuLink">
+                    <li><a class="dropdown-item" th:href="@{/perfil}">
+                        <i class="bi bi-person-circle me-2"></i>Mi Perfil
+                    </a></li>
+                    <li><hr class="dropdown-divider"></li>
+                    <li><a class="dropdown-item text-danger" href="/logout">
+                        <i class="bi bi-box-arrow-right me-2"></i>Cerrar Sesión
+                    </a></li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</nav>
+<div class="container">
+    <h1 class="my-4" th:text="${usuario.admin} ? 'Todos los artículos' : 'Mis Artículos'"></h1>
+
+    <!-- Botón para abrir el modal de nuevo artículo -->
+    <button
+            class="btn btn-primary mb-3"
+            data-bs-toggle="modal"
+            data-bs-target="#nuevoArticuloModal"
+    >
+        + Nuevo Artículo
+    </button>
+
+    <table class="table table-striped">
+        <thead>
+        <tr>
+            <th>Título</th>
+            <th>Fecha</th>
+            <th>Comentarios</th>
+            <th>Etiquetas</th>
+            <th>Artículo</th>
+        </tr>
+        </thead>
+        <tbody>
+        <tr th:each="articulo : ${articulos}">
+            <!-- Columna Título -->
+            <td th:text="${articulo.titulo}"></td>
+            <!-- Columna Fecha -->
+            <td th:text="${#dates.format(articulo.fecha, 'dd/MM/yyyy')}"></td>
+            <!-- Columna Comentarios -->
+            <td>
+                <span class="badge bg-primary" th:text="${articulo.comentarios.size()}"></span>
+                <!-- Botón para abrir modal de comentarios (solo ver/eliminar) -->
+                <button
+                        class="btn btn-sm btn-outline-primary ms-2 btn-ver-comentarios"
+                        th:attr="data-articulo-id=${articulo.id}"
+                >
+                    Ver / Eliminar
+                </button>
+            </td>
+            <!-- Columna Etiquetas -->
+            <td>
+                <!-- Botón para abrir modal de etiquetas -->
+                <button
+                        class="btn btn-sm btn-success btn-etiquetas"
+                        th:attr="data-articulo-id=${articulo.id}"
+                >
+                    Gestionar Etiquetas
+                </button>
+            </td>
+            <!-- Columna de acciones (Artículo) -->
+            <td class="table-actions">
+                <!-- Botón Modificar -->
+                <button
+                        class="btn btn-sm btn-primary me-1 btn-editar"
+                        th:attr="data-id=${articulo.id}, data-titulo=${articulo.titulo}, data-contenido=${articulo.cuerpo}"
+                >
+                    <i class="bi bi-pencil"></i> Modificar
+                </button>
+
+                <!-- Botón Borrar Artículo -->
+                <form
+                        th:action="@{'/articulo/' + ${articulo.id} + '/eliminar'}"
+                        method="post"
+                        style="display: inline-block;"
+                >
+                    <button
+                            type="submit"
+                            class="btn btn-sm btn-danger"
+                            onclick="return confirm('¿Estás seguro de eliminar este artículo?')"
+                    >
+                        <i class="bi bi-trash"></i> Borrar
+                    </button>
+                </form>
+            </td>
+        </tr>
+        </tbody>
+    </table>
+</div>
+
+<!-- Modal para Nuevo Artículo -->
+<div
+        class="modal fade"
+        id="nuevoArticuloModal"
+        tabindex="-1"
+        aria-labelledby="nuevoArticuloModalLabel"
+        aria-hidden="true"
+>
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="nuevoArticuloModalLabel">Nuevo Artículo</h5>
+                <button
+                        type="button"
+                        class="btn-close"
+                        data-bs-dismiss="modal"
+                        aria-label="Cerrar"
+                ></button>
+            </div>
+            <div class="modal-body">
+                <form th:action="@{/articulos/nuevo}" method="post">
+                    <div class="mb-3">
+                        <label for="titulo" class="form-label">Título</label>
+                        <input type="text" class="form-control" id="titulo" name="titulo" required />
+                    </div>
+                    <div class="mb-3">
+                        <label for="contenido" class="form-label">Contenido</label>
+                        <textarea
+                                class="form-control"
+                                id="contenido"
+                                name="contenido"
+                                rows="5"
+                                required
+                        ></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label for="etiquetas" class="form-label">Etiquetas</label>
+                        <input
+                                type="text"
+                                class="form-control"
+                                id="etiquetas"
+                                name="etiquetas"
+                                placeholder="Separadas por comas"
+                        />
+                    </div>
+                    <button type="submit" class="btn btn-primary">Crear Artículo</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de Edición (Artículos) -->
+<div
+        class="modal fade"
+        id="editarArticuloModal"
+        tabindex="-1"
+        aria-labelledby="editarArticuloModalLabel"
+        aria-hidden="true"
+>
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="editarArticuloModalLabel">Editar Artículo</h5>
+                <button
+                        type="button"
+                        class="btn-close"
+                        data-bs-dismiss="modal"
+                        aria-label="Cerrar"
+                ></button>
+            </div>
+            <div class="modal-body">
+                <form id="formEditarArticulo" method="post">
+                    <input type="hidden" name="id" id="editarId" />
+                    <div class="mb-3">
+                        <label for="editarTitulo" class="form-label">Título</label>
+                        <input type="text" class="form-control" id="editarTitulo" name="titulo" required />
+                    </div>
+                    <div class="mb-3">
+                        <label for="editarContenido" class="form-label">Contenido</label>
+                        <textarea
+                                class="form-control"
+                                id="editarContenido"
+                                name="contenido"
+                                rows="5"
+                                required
+                        ></textarea>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Guardar Cambios</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal para Comentarios (Solo ver y eliminar) -->
+<div class="modal fade" id="modalComentarios" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Comentarios del Artículo</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="d-flex justify-content-center my-3">
+                    <div class="spinner-border text-primary" id="spinnerComentarios" role="status">
+                        <span class="visually-hidden">Cargando...</span>
+                    </div>
+                </div>
+                <div id="contenedor-comentarios" class="d-none">
+                    <div id="lista-comentarios" class="mb-3"></div>
+                    <div id="mensaje-error" class="alert alert-danger d-none"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Nueva implementación del manejo de comentarios
+    document.querySelectorAll('.btn-ver-comentarios').forEach(btn => {
+        btn.addEventListener('click', async () => {
+            const articuloId = btn.dataset.articuloId;
+            const modal = new bootstrap.Modal('#modalComentarios');
+            const spinner = document.getElementById('spinnerComentarios');
+            const contenedor = document.getElementById('contenedor-comentarios');
+            const lista = document.getElementById('lista-comentarios');
+            const errorDiv = document.getElementById('mensaje-error');
+
+            // Resetear estado
+            spinner.classList.remove('d-none');
+            contenedor.classList.add('d-none');
+            errorDiv.classList.add('d-none');
+            lista.innerHTML = '';
+            modal.show();
+
+            try {
+                const response = await fetch(`/articulo/${articuloId}/comentarios`);
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error || 'Error al cargar comentarios');
+                }
+
+                const data = await response.json();
+
+                if (data.comentarios.length === 0) {
+                    lista.innerHTML = `
+                    <div class="text-center text-muted">
+                        No hay comentarios en este artículo
+                    </div>
+                `;
+                } else {
+                    lista.innerHTML = data.comentarios.map(comentario => `
+                    <div class="card mb-3">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div class="me-3">
+                                    <h6 class="card-title mb-1">${comentario.autor}</h6>
+                                    <p class="card-text mb-0">${comentario.texto}</p>
+                                </div>
+                                <form action="/comentario/${comentario.id}/eliminar" method="POST">
+                                    <button type="submit"
+                                            class="btn btn-danger btn-sm"
+                                            onclick="return confirm('¿Eliminar este comentario?')">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                `).join('');
+                }
+
+                contenedor.classList.remove('d-none');
+
+            } catch (error) {
+                errorDiv.textContent = error.message;
+                errorDiv.classList.remove('d-none');
+            } finally {
+                spinner.classList.add('d-none');
+            }
+        });
+    });
+</script>
+
+<!-- Modal para Etiquetas -->
+<div
+        class="modal fade"
+        id="modalEtiquetas"
+        tabindex="-1"
+        aria-labelledby="modalEtiquetasLabel"
+        aria-hidden="true"
+>
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modalEtiquetasLabel">Etiquetas</h5>
+                <button
+                        type="button"
+                        class="btn-close"
+                        data-bs-dismiss="modal"
+                        aria-label="Cerrar"
+                ></button>
+            </div>
+            <div class="modal-body">
+                <!-- Aquí se listarán etiquetas vía JavaScript -->
+                <div id="listaEtiquetas"></div>
+
+                <!-- Formulario para crear una nueva etiqueta -->
+                <form id="formNuevaEtiqueta" method="post">
+                    <input type="hidden" name="articuloId" id="etiquetaArticuloId" />
+                    <div class="mb-3">
+                        <label for="etiquetaTexto" class="form-label">Nueva Etiqueta</label>
+                        <input type="text" class="form-control" id="etiquetaTexto" name="etiqueta" required />
+                    </div>
+                    <button type="submit" class="btn btn-primary">Agregar Etiqueta</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Scripts -->
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        // -- LÓGICA DE EDICIÓN DE ARTÍCULOS --
+        document.querySelectorAll(".btn-editar").forEach((button) => {
+            button.addEventListener("click", function () {
+                const articuloId = this.getAttribute("data-id");
+                const articuloTitulo = this.getAttribute("data-titulo");
+                const articuloContenido = this.getAttribute("data-contenido");
+
+                document.getElementById("editarId").value = articuloId;
+                document.getElementById("editarTitulo").value = articuloTitulo;
+                document.getElementById("editarContenido").value = articuloContenido;
+
+                new bootstrap.Modal(
+                    document.getElementById("editarArticuloModal")
+                ).show();
+            });
+        });
+
+        document
+            .getElementById("formEditarArticulo")
+            .addEventListener("submit", function (e) {
+                e.preventDefault();
+                const formData = new FormData(this);
+                const articuloId = formData.get("id");
+
+                fetch(`/articulo/${articuloId}/editar`, {
+                    method: "POST",
+                    body: formData,
+                }).then((response) => {
+                    if (response.ok) {
+                        window.location.reload();
+                    }
+                });
+            });
+
+        // -- LÓGICA PARA COMENTARIOS (SOLO VER/ELIMINAR) --
+        const modalComentarios = new bootstrap.Modal(
+            document.getElementById("modalComentarios")
+        );
+        const listaComentariosDiv = document.getElementById("listaComentarios");
+
+        // Al hacer click en "Ver / Eliminar" (botón comentarios)
+        document.querySelectorAll(".btn-ver-comentarios").forEach((btn) => {
+            btn.addEventListener("click", () => {
+                const articuloId = btn.getAttribute("data-articulo-id");
+                console.log("Cargando comentarios para el artículo con ID:", articuloId);
+                listaComentariosDiv.innerHTML = "";
+
+                fetch(`/articulo/${articuloId}/comentarios`)
+                    .then((response) => {
+                        if (!response.ok) {
+                            throw new Error("Error en la respuesta del servidor");
+                        }
+                        return response.json();
+                    })
+                    .then((comentarios) => {
+                        console.log("Comentarios recibidos:", comentarios);
+                        if (comentarios.length === 0) {
+                            listaComentariosDiv.innerHTML = "<p>No hay comentarios.</p>";
+                        } else {
+                            comentarios.forEach((c) => {
+                                listaComentariosDiv.innerHTML += `
+                      <div class="d-flex justify-content-between align-items-center border p-2 mb-2">
+                        <span>${c.comentario}</span>
+                        <form action="/comentario/${c.id}/eliminar" method="post" class="mb-0">
+                          <button class="btn btn-sm btn-danger" onclick="return confirm('¿Eliminar este comentario?')">Eliminar</button>
+                        </form>
+                      </div>
+                    `;
+                            });
+                        }
+                        modalComentarios.show();
+                    })
+                    .catch((error) => {
+                        console.error("Error al cargar comentarios:", error);
+                        listaComentariosDiv.innerHTML = "<p>Error al cargar comentarios.</p>";
+                        modalComentarios.show();
+                    });
+            });
+        });
+
+        // -- LÓGICA PARA ETIQUETAS --
+        const modalEtiquetas = new bootstrap.Modal(
+            document.getElementById("modalEtiquetas")
+        );
+        const listaEtiquetasDiv = document.getElementById("listaEtiquetas");
+        const formNuevaEtiqueta = document.getElementById("formNuevaEtiqueta");
+        const etiquetaArticuloIdInput = document.getElementById("etiquetaArticuloId");
+
+        // Al hacer click en "Gestionar Etiquetas"
+        document.querySelectorAll(".btn-etiquetas").forEach((btn) => {
+            btn.addEventListener("click", () => {
+                const articuloId = btn.getAttribute("data-articulo-id");
+                etiquetaArticuloIdInput.value = articuloId;
+                listaEtiquetasDiv.innerHTML = "";
+
+                fetch(`/articulo/${articuloId}/etiquetas`)
+                    .then((resp) => resp.json())
+                    .then((etiquetas) => {
+                        etiquetas.forEach((et) => {
+                            listaEtiquetasDiv.innerHTML += `
+                    <div class="d-flex justify-content-between align-items-center border p-2 mb-2">
+                      <span>${et.etiqueta}</span>
+                      <form action="/etiqueta/${et.id}/eliminar" method="post" class="mb-0">
+                        <input type="hidden" name="articuloId" value="${articuloId}" />
+                        <button class="btn btn-sm btn-danger" onclick="return confirm('¿Eliminar esta etiqueta?')">Eliminar</button>
+                      </form>
+                    </div>
+                  `;
+                        });
+                        modalEtiquetas.show();
+                    });
+            });
+        });
+
+        // Lógica para crear nueva etiqueta
+        formNuevaEtiqueta.addEventListener("submit", function (e) {
+            e.preventDefault();
+            const formData = new FormData(this);
+
+            fetch("/etiqueta/nueva", {
+                method: "POST",
+                body: formData,
+            })
+                .then((resp) => {
+                    if (!resp.ok) throw new Error("No se pudo crear la etiqueta");
+                    const articuloId = etiquetaArticuloIdInput.value;
+                    return fetch(`/articulo/${articuloId}/etiquetas`);
+                })
+                .then((resp) => resp.json())
+                .then((etiquetas) => {
+                    listaEtiquetasDiv.innerHTML = "";
+                    etiquetas.forEach((et) => {
+                        listaEtiquetasDiv.innerHTML += `
+                  <div class="d-flex justify-content-between align-items-center border p-2 mb-2">
+                    <span>${et.etiqueta}</span>
+                    <form action="/etiqueta/${et.id}/eliminar" method="post" class="mb-0">
+                      <input type="hidden" name="articuloId" value="${etiquetaArticuloIdInput.value}" />
+                      <button class="btn btn-sm btn-danger" onclick="return confirm('¿Eliminar esta etiqueta?')">Eliminar</button>
+                    </form>
+                  </div>
+                `;
+                    });
+                    document.getElementById("etiquetaTexto").value = "";
+                })
+                .catch((err) => alert(err.message));
+        });
+    });
+</script>
+
+<!-- Bootstrap JS -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

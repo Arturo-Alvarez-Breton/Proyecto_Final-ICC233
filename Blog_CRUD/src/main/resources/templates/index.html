@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Blog - Inicio</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <style>
+        .articulo-card { border: 1px solid #ddd; margin-bottom: 20px; padding: 15px; }
+        .leer-mas { color: #007bff; text-decoration: none; }
+        .etiquetas { color: #6c757d; font-size: 0.9em; }
+        .comentarios { margin-top: 10px; }
+        .pagination { margin-top: 20px; }
+        .tag-box { max-height: 80vh; overflow-y: auto; }
+        .navbar .dropdown-toggle::after { vertical-align: middle; }
+        .user-avatar {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            object-fit: cover;
+            margin-right: 8px;
+        }
+        .chat-button {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background-color: #007bff;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            z-index: 1000;
+        }
+        .chat-container {
+            position: fixed;
+            bottom: 90px;
+            right: 20px;
+            width: 350px;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            display: none;
+            flex-direction: column;
+            z-index: 1000;
+        }
+        .chat-header {
+            padding: 15px;
+            background: #007bff;
+            color: white;
+            border-radius: 10px 10px 0 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .chat-messages {
+            height: 300px;
+            overflow-y: auto;
+            padding: 15px;
+        }
+        .chat-input {
+            padding: 15px;
+            border-top: 1px solid #ddd;
+        }
+    </style>
+</head>
+<body>
+
+<!-- Barra de navegación -->
+<nav class="navbar navbar-expand-lg navbar-light bg-light">
+    <div class="container-fluid">
+        <a class="navbar-brand" href="/index">Blog</a>
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navbarNav">
+            <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+                <li class="nav-item"><a class="nav-link" href="/index">Home</a></li>
+                <li class="nav-item">
+                    <a class="nav-link" href="/mis-articulos"
+                       th:if="${usuario != null and (usuario.autor or usuario.admin)}">
+                        Mis Artículos
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="/usuarios"
+                       th:if="${usuario != null and usuario.admin}">Usuarios</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="/admin/chats"
+                       th:if="${usuario != null and usuario.admin}">
+                        Chats
+                    </a>
+                </li>
+            </ul>
+
+            <!-- Menú de usuario corregido -->
+            <div class="dropdown" th:if="${usuario != null}">
+                <a class="btn btn-link text-decoration-none dropdown-toggle d-flex align-items-center"
+                   href="#" role="button" id="dropdownMenuLink"
+                   data-bs-toggle="dropdown" aria-expanded="false">
+                    <img th:if="${usuario.fotoBase64}"
+                         th:src="@{'data:' + ${usuario.fotoMimeType} + ';base64,' + ${usuario.fotoBase64}}"
+                         class="user-avatar">
+                    <img th:unless="${usuario.fotoBase64}"
+                         src="/img/avatar-default.png"
+                         class="user-avatar">
+                    <span class="text-dark" th:text="${usuario.nombre}"></span>
+                </a>
+                <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="dropdownMenuLink">
+                    <li><a class="dropdown-item" th:href="@{/perfil}">
+                        <i class="bi bi-person-circle me-2"></i>Mi Perfil
+                    </a></li>
+                    <li><hr class="dropdown-divider"></li>
+                    <li><a class="dropdown-item text-danger" href="/logout">
+                        <i class="bi bi-box-arrow-right me-2"></i>Cerrar Sesión
+                    </a></li>
+                </ul>
+            </div>
+
+            <!-- Botón de login solo cuando no hay usuario -->
+            <div th:unless="${usuario != null}">
+                <a class="btn btn-outline-primary" href="/login">Iniciar Sesión</a>
+            </div>
+        </div>
+    </div>
+</nav>
+
+<!-- Contenido principal -->
+<div class="container mt-4">
+    <div class="row">
+        <!-- Artículos -->
+        <div class="col-md-9">
+            <div id="articles-container">
+                <!-- Los artículos se cargarán dinámicamente aquí -->
+                <div th:each="articulo : ${articulos}" class="articulo-card">
+                    <h3 th:text="${articulo.titulo}"></h3>
+                    <p class="text-muted">Autor: [[${articulo.autor.nombre}]]</p>
+                    <p th:if="${#strings.length(articulo.cuerpo) > 70}">
+                        [[${#strings.substring(articulo.cuerpo, 0, 70)}]]... <a th:href="@{/articulo/{id}(id=${articulo.id})}">Leer más</a>
+                    </p>
+                    <p th:if="${#strings.length(articulo.cuerpo) <= 70}">
+                        [[${articulo.cuerpo}]]
+                    </p>
+                </div>
+            </div>
+
+            <!-- Paginación AJAX -->
+            <div class="pagination mt-4 d-flex align-items-center">
+                <button id="prev-btn" class="btn btn-outline-primary me-3" style="display: none;" data-page="1">
+                    Anterior
+                </button>
+                <span class="mx-3" id="page-info"></span>
+                <button id="next-btn" class="btn btn-outline-primary ms-3" style="display: none;" data-page="2">
+                    Siguiente
+                </button>
+            </div>
+        </div>
+
+        <!-- Etiquetas -->
+        <div class="col-md-3">
+            <div class="card shadow-sm">
+                <div class="card-header bg-white">
+                    <h5 class="card-title mb-0">Filtrar por etiquetas</h5>
+                </div>
+                <div class="card-body p-2 tag-box">
+                    <!-- Etiqueta seleccionada -->
+                    <div id="selected-tags" class="mb-2">
+                        <div th:if="${etiquetaSeleccionadaId != null}">
+                            <div th:each="etiqueta : ${etiquetas}">
+                                <div th:if="${etiqueta.id == etiquetaSeleccionadaId}"
+                                     class="d-block p-2 bg-primary text-white rounded mb-2"
+                                     style="cursor: pointer;"
+                                     onclick="removeFilter()">
+                                    <span th:text="${etiqueta.etiqueta}"></span>
+                                    <small>(click para eliminar)</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Lista de etiquetas -->
+                    <div id="all-tags">
+                        <div th:each="etiqueta : ${etiquetas}">
+                            <a th:href="@{/index(etiquetaId=${etiqueta.id})}"
+                               class="d-block p-2 text-dark text-decoration-none rounded"
+                               th:data-etiqueta-id="${etiqueta.id}"
+                               th:data-etiqueta-nombre="${etiqueta.etiqueta}">
+                                <span th:text="${etiqueta.etiqueta}"></span>
+                                <small class="text-muted ms-1">
+                                    ([[${etiqueta.articulos.size()}]])
+                                </small>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Botón flotante del chat -->
+<div class="chat-button" onclick="toggleChat()"
+     th:data-username="${usuario != null ? usuario.nombre : ''}">
+    <i class="bi bi-chat-dots"></i>
+</div>
+
+<!-- Contenedor del chat -->
+<div class="chat-container" id="chatContainer">
+    <div class="chat-header">
+        <h5>Chat en vivo</h5>
+        <button class="btn btn-sm btn-close" onclick="toggleChat()"></button>
+    </div>
+
+    <div class="chat-messages" id="chatMessages">
+        <!-- Aquí se cargarán los mensajes del chat desde el servidor -->
+        <div class="alert alert-info">Bienvenido al chat!</div>
+    </div>
+
+    <!-- Formulario de chat -->
+    <div class="chat-input">
+        <!-- Si no hay usuario, se muestra un input para el nombre -->
+        <div th:if="${usuario == null}" id="nameInputSection">
+            <input type="text" id="userName" class="form-control mb-2" placeholder="Ingresa tu nombre">
+        </div>
+        <div class="input-group">
+            <input type="text" id="messageInput" class="form-control" placeholder="Escribe tu mensaje...">
+            <button class="btn btn-primary" onclick="sendMessage()">
+                <i class="bi bi-send"></i>
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Scripts -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+    // Variables globales para manejar la paginación y el filtro actual
+    let paginaActual = 1;
+    let totalPaginas = 1;
+    let filtroEtiqueta = null; // Guarda el id de la etiqueta seleccionada, si existe
+
+    document.addEventListener('DOMContentLoaded', function () {
+        // Cargar artículos inicialmente sin filtro
+        cargarArticulos(paginaActual, filtroEtiqueta);
+
+        // Delegar el clic en los links de etiquetas para usar AJAX
+        document.querySelector('.tag-box').addEventListener('click', function(e) {
+            const link = e.target.closest('a');
+            if(link) {
+                e.preventDefault();
+                // Extraer el parámetro etiquetaId desde el href del enlace
+                const urlParams = new URLSearchParams(link.href.split('?')[1]);
+                filtroEtiqueta = urlParams.get('etiquetaId');
+                const etiquetaNombre = link.dataset.etiquetaNombre;
+                updateSelectedTags(filtroEtiqueta, etiquetaNombre);
+                // Al cambiar de filtro, reiniciar a la página 1
+                paginaActual = 1;
+                cargarArticulos(paginaActual, filtroEtiqueta);
+                history.pushState(null, '', `/index?etiquetaId=${filtroEtiqueta}`);
+            }
+        });
+
+        // Escuchar los eventos de los botones de paginación
+        document.querySelector('.pagination').addEventListener('click', function (e) {
+            if (e.target.matches('button[data-page]')) {
+                e.preventDefault();
+                let page = parseInt(e.target.getAttribute('data-page'));
+                cargarArticulos(page, filtroEtiqueta);
+            }
+        });
+
+        // Cargar mensajes del chat al iniciar y actualizar cada 10 segundos (opcional)
+        loadChatMessages();
+        setInterval(loadChatMessages, 10000);
+    });
+
+    // Función para actualizar las etiquetas seleccionadas
+    function updateSelectedTags(etiquetaId, etiquetaNombre) {
+        const selectedTagsDiv = document.getElementById('selected-tags');
+        selectedTagsDiv.innerHTML = '';
+
+        if (etiquetaId) {
+            const tagElement = document.createElement('div');
+            tagElement.className = 'd-block p-2 bg-primary text-white rounded mb-2';
+            tagElement.innerHTML = `
+                ${etiquetaNombre}
+                <small>(click para eliminar)</small>
+            `;
+            tagElement.style.cursor = 'pointer';
+            tagElement.addEventListener('click', () => {
+                filtroEtiqueta = null;
+                paginaActual = 1;
+                selectedTagsDiv.innerHTML = '';
+                cargarArticulos(paginaActual, null);
+                history.pushState(null, '', '/index');
+            });
+            selectedTagsDiv.appendChild(tagElement);
+        }
+    }
+
+    // Función para cargar artículos vía AJAX
+    function cargarArticulos(page, etiquetaId) {
+        let url = `/index?pagina=${page}`;
+        if (etiquetaId) {
+            url += `&etiquetaId=${etiquetaId}`;
+        }
+        fetch(url, { headers: { "X-Requested-With": "XMLHttpRequest" } })
+            .then(response => response.json())
+            .then(data => {
+                const container = document.getElementById('articles-container');
+                container.innerHTML = ''; // Limpiar los artículos previos
+
+                data.articulos.forEach(art => {
+                    const div = document.createElement('div');
+                    div.classList.add('articulo-card');
+                    div.innerHTML = `
+                        <h3>${art.titulo}</h3>
+                        <p class="text-muted">Autor: ${art.autor ? art.autor : ''}</p>
+                        <p>${art.cuerpo}</p>
+                    `;
+                    container.appendChild(div);
+                });
+
+                // Actualizar paginación
+                paginaActual = data.paginaActual;
+                totalPaginas = data.totalPaginas;
+                document.getElementById('page-info').textContent = `Página ${paginaActual} de ${totalPaginas}`;
+
+                const prevBtn = document.getElementById('prev-btn');
+                const nextBtn = document.getElementById('next-btn');
+
+                if (paginaActual > 1) {
+                    prevBtn.style.display = 'inline-block';
+                    prevBtn.setAttribute('data-page', paginaActual - 1);
+                } else {
+                    prevBtn.style.display = 'none';
+                }
+
+                if (paginaActual < totalPaginas) {
+                    nextBtn.style.display = 'inline-block';
+                    nextBtn.setAttribute('data-page', paginaActual + 1);
+                } else {
+                    nextBtn.style.display = 'none';
+                }
+            })
+            .catch(err => console.error("Error al cargar artículos:", err));
+    }
+
+    // Función para mostrar/ocultar el chat
+    function toggleChat() {
+        const chatContainer = document.getElementById('chatContainer');
+        chatContainer.style.display = chatContainer.style.display === 'none' ? 'flex' : 'none';
+    }
+
+    // Función para enviar el mensaje vía AJAX
+    function sendMessage() {
+        const messageInput = document.getElementById('messageInput');
+        const content = messageInput.value.trim();
+        if (!content) return;
+
+        const formData = new FormData();
+        formData.append("contenido", content);
+        // Si no hay usuario autenticado, se agrega el nombre ingresado
+        const chatButton = document.querySelector('.chat-button');
+        if (!chatButton.dataset.username) {
+            const inputName = document.getElementById('userName')?.value;
+            formData.append("nombre", inputName || "Anónimo");
+        }
+
+        fetch("/mensajes/enviar", {
+            method: "POST",
+            body: formData
+        })
+            .then(response => {
+                if (response.ok) {
+                    messageInput.value = "";
+                    loadChatMessages();
+                } else {
+                    console.error("Error al enviar el mensaje");
+                }
+            })
+            .catch(error => console.error("Error:", error));
+    }
+
+    function loadChatMessages() {
+        fetch("/mensajes/obtener", { headers: { "X-Requested-With": "XMLHttpRequest" } })
+            .then(response => response.json())
+            .then(data => {
+                const chatMessagesDiv = document.getElementById('chatMessages');
+                chatMessagesDiv.innerHTML = "";
+
+                // data.mensajes es el array con todos los mensajes
+                // Revertimos el orden para mostrar los últimos al final (opcional)
+                data.mensajes.reverse().forEach(msg => {
+                    const messageElement = document.createElement('div');
+                    messageElement.className = "alert alert-light";
+                    messageElement.innerHTML = `<strong>${msg.autor}:</strong> ${msg.contenido}`;
+                    chatMessagesDiv.appendChild(messageElement);
+                });
+
+                // Hacer scroll al final
+                chatMessagesDiv.scrollTop = chatMessagesDiv.scrollHeight;
+            })
+            .catch(error => console.error("Error al cargar mensajes:", error));
+    }
+
+    // Permitir enviar mensaje al presionar Enter
+    document.getElementById('messageInput').addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') sendMessage();
+    });
+</script>
+
+</body>
+</html>

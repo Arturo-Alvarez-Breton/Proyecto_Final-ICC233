@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8">
+  <title>Perfil de Usuario</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+  <style>
+    .profile-pic {
+      width: 200px;
+      height: 200px;
+      object-fit: cover;
+      border-radius: 50%;
+    }
+    .upload-btn {
+      position: relative;
+      overflow: hidden;
+      margin-top: 10px;
+    }
+    .upload-btn input[type=file] {
+      position: absolute;
+      top: 0;
+      right: 0;
+      min-width: 100%;
+      min-height: 100%;
+      font-size: 100px;
+      text-align: right;
+      filter: alpha(opacity=0);
+      opacity: 0;
+      outline: none;
+      cursor: inherit;
+      display: block;
+    }
+  </style>
+</head>
+<body>
+<nav class="navbar navbar-expand-lg navbar-light bg-light">
+  <div class="container-fluid">
+    <a class="navbar-brand" href="/index">Blog</a>
+    <div class="collapse navbar-collapse">
+      <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+        <li class="nav-item"><a class="nav-link" href="/index">Home</a></li>
+        <li class="nav-item"><a class="nav-link" href="/mis-articulos">Mis Artículos</a></li>
+        <li class="nav-item"><a class="nav-link" href="/usuarios" th:if="${usuario.admin}">Usuarios</a></li>
+        <li class="nav-item">
+          <a class="nav-link" href="/admin/chats"
+             th:if="${usuario != null and usuario.admin}">
+            Chats
+          </a>
+        </li>
+      </ul>
+      <a class="btn btn-outline-danger" href="/logout">Log out</a>
+    </div>
+  </div>
+</nav>
+
+<div class="container mt-4">
+  <div class="row">
+    <div class="col-md-4">
+      <!-- Sección de Foto de Perfil -->
+      <div class="card">
+        <div class="card-body text-center">
+          <div th:if="${usuario.fotoBase64}">
+            <img th:src="@{'data:' + ${usuario.fotoMimeType} + ';base64,' + ${usuario.fotoBase64}}"
+                 class="profile-pic mb-3" alt="Foto de perfil">
+          </div>
+          <div th:unless="${usuario.fotoBase64}">
+            <img src="/img/avatar-default.png" class="profile-pic mb-3" alt="Foto predeterminada">
+          </div>
+
+          <form th:action="@{/actualizar-foto}" method="post" enctype="multipart/form-data">
+            <div class="upload-btn btn btn-primary">
+              <span>Cambiar Foto</span>
+              <input type="file" name="foto" accept="image/*" required>
+            </div>
+            <button type="submit" class="btn btn-success mt-2">Guardar Cambios</button>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-md-8">
+      <!-- Información del Usuario -->
+      <div class="card">
+        <div class="card-header">
+          <h4>Información del Perfil</h4>
+        </div>
+        <div class="card-body">
+          <form th:action="@{/actualizar-perfil}" method="post">
+            <div class="mb-3">
+              <label class="form-label">Nombre</label>
+              <input type="text" class="form-control" name="nombre"
+                     th:value="${usuario.nombre}" required>
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Nombre de usuario</label>
+              <input type="text" class="form-control" name="username"
+                     th:value="${usuario.username}" required>
+            </div>
+            <button type="submit" class="btn btn-primary">Actualizar Datos</button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
