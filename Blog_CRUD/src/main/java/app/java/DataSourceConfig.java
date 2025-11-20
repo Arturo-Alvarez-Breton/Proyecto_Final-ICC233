@@ -1,23 +1,40 @@
 package app.java;
 
-import org.postgresql.ds.PGSimpleDataSource;
+import io.github.cdimascio.dotenv.Dotenv;
 
 public class DataSourceConfig {
+    private static Dotenv dotenv;
 
-    public static PGSimpleDataSource getDataSource() {
-        PGSimpleDataSource ds = new PGSimpleDataSource();
-
-        // Intenta extraer la URL de la variable de entorno JDBC_DATABASE_URL
-        String jdbcUrl = System.getenv("JDBC_DATABASE_URL");
-
-        if (jdbcUrl != null && !jdbcUrl.isEmpty()) {
-            // Si la variable de entorno está configurada, la usamos
-            ds.setUrl(jdbcUrl);
-        } else {
-            // Si no está configurada, lanzamos una excepción para indicar el error
-            throw new RuntimeException("La variable de entorno JDBC_DATABASE_URL no está configurada.");
+    static {
+        try {
+            dotenv = Dotenv.configure()
+                    .directory("./")
+                    .ignoreIfMissing()
+                    .load();
+        } catch (Exception e) {
+            System.err.println("Error al cargar el archivo .env: " + e.getMessage());
         }
+    }
 
-        return ds;
+    public static String get(String key) {
+        if (dotenv != null) {
+            return dotenv.get(key);
+        }
+        return System.getenv(key);
+    }
+
+    public static String getDbUrl() {
+        String server = get("DB_SERVER");
+        String dbName = get("DB_NAME");
+        return String.format("jdbc:sqlserver://%s:1433;databaseName=%s;trustServerCertificate=true;encrypt=true;",
+                            server, dbName);
+    }
+
+    public static String getDbUser() {
+        return get("DB_USER");
+    }
+
+    public static String getDbPassword() {
+        return get("DB_PASSWORD");
     }
 }

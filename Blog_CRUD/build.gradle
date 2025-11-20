@@ -31,9 +31,12 @@ dependencies {
     implementation 'com.fasterxml.jackson.datatype:jackson-datatype-hibernate5:2.15.2'
     //Cookies
     implementation 'org.jasypt:jasypt:1.9.3'
-    implementation 'org.postgresql:postgresql:42.5.0'
 
+    // SQL Server JDBC Driver
+    implementation 'com.microsoft.sqlserver:mssql-jdbc:12.4.2.jre11'
 
+    // Dotenv para cargar variables de entorno
+    implementation 'io.github.cdimascio:dotenv-java:3.0.0'
 }
 
 application {

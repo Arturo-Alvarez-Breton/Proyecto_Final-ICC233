@@ -16,15 +16,15 @@
         <class>modelos.Etiqueta</class>
 
         <properties>
-            <!-- Configuración de H2 en modo servidor -->
+            <!-- Configuración de SQL Server -->
             <property name="javax.persistence.jdbc.url"
-                      value="jdbc:h2:tcp://localhost//tmp/blogdb;DB_CLOSE_DELAY=-1;AUTO_SERVER=TRUE"/>
-            <property name="javax.persistence.jdbc.user" value="sa"/>
-            <property name="javax.persistence.jdbc.password" value=""/>
-            <property name="javax.persistence.jdbc.driver" value="org.h2.Driver"/>
+                      value="jdbc:sqlserver://MSI:1433;databaseName=blogdb;trustServerCertificate=true;encrypt=true;"/>
+            <property name="javax.persistence.jdbc.user" value="adminblog"/>
+            <property name="javax.persistence.jdbc.password" value="adminblog"/>
+            <property name="javax.persistence.jdbc.driver" value="com.microsoft.sqlserver.jdbc.SQLServerDriver"/>
 
-            <!-- Configuración de Hibernate -->
-            <property name="hibernate.dialect" value="org.hibernate.dialect.H2Dialect"/>
+            <!-- Configuración de Hibernate para SQL Server -->
+            <property name="hibernate.dialect" value="org.hibernate.dialect.SQLServer2012Dialect"/>
             <property name="hibernate.hbm2ddl.auto" value="update"/>
             <property name="hibernate.show_sql" value="true"/>
             <property name="hibernate.format_sql" value="true"/>

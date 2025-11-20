@@ -60,11 +60,7 @@ public class App {
         } finally {
             em.close();
         }
-        try {
-            DatabaseUtil.iniciarConsolaWeb();
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
+        System.out.println("Base de datos SQL Server inicializada correctamente");
     }
 
     private static TemplateEngine configurarThymeleaf() {
@@ -94,12 +90,12 @@ public class App {
         app.post("/mensajes/{id}/eliminar", MensajeController::eliminarMensaje);
     }
 
-    // Método para registrar login (por si no se configura JDBC_DATABASE_URL)
+    // Metodo para registrar login (por si no se configura JDBC_DATABASE_URL)
     private static void registrarLogin(String username) {
         String dbUrl = System.getenv("JDBC_DATABASE_URL");
         if (dbUrl == null || dbUrl.isEmpty()) {
-            dbUrl = "jdbc:h2:tcp://localhost//tmp/blogdb;DB_CLOSE_DELAY=-1;AUTO_SERVER=TRUE";
-            System.err.println("Advertencia: La variable JDBC_DATABASE_URL no está configurada. Usando valor por defecto: " + dbUrl);
+//            dbUrl = "jdbc:h2:tcp://localhost//tmp/blogdb;DB_CLOSE_DELAY=-1;AUTO_SERVER=TRUE";
+            System.err.println("Advertencia: La variable JDBC_DATABASE_URL no está configurada");
         }
         String sql = "INSERT INTO login_audits (username, login_time) VALUES (?, ?)";
         try (Connection conn = DriverManager.getConnection(dbUrl);
