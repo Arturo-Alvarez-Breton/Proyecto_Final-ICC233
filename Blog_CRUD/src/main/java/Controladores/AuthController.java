@@ -16,6 +16,7 @@ import java.util.Base64;
 import java.util.List;
 import java.util.Map;
 
+import servicios.LoginAttemptService;
 public class AuthController {
 
     private static final String COOKIE_NAME = "rememberMe";
@@ -80,6 +81,9 @@ public class AuthController {
         String password = ctx.formParam("password");
         boolean recordar = ctx.formParam("recordar") != null; // Verificar si el checkbox está marcado
 
+        // Obtener la dirección IP del cliente
+        String ipAddress = ctx.ip();
+
         // Sanitize username to avoid injection and trim whitespace
         username = InputSanitizer.stripTags(username);
         if (username != null) username = username.trim();
@@ -90,9 +94,21 @@ public class AuthController {
             return;
         }
 
+        // SECURITY: Verificar si la cuenta o IP está bloqueada por intentos fallidos
+        if (LoginAttemptService.isBlocked(username, ipAddress)) {
+            long remainingMinutes = LoginAttemptService.getRemainingLockoutMinutes(username, ipAddress);
+            ctx.attribute("error", "Demasiados intentos fallidos. Tu cuenta está bloqueada temporalmente. " +
+                    "Por favor, intenta de nuevo en " + remainingMinutes + " minuto(s).");
+            ctx.render("login.html");
+            return;
+        }
+
         // Use UsuarioServicios which checks bcrypt-hashed passwords
         User usuario = UsuarioServicios.autenticar(username, password);
         if (usuario != null) {
+            // SECURITY: Limpiar intentos fallidos al iniciar sesión exitosamente
+            LoginAttemptService.loginSucceeded(username, ipAddress);
+
             // IMPORTANTE: Regenerar el ID de sesión ANTES de establecer el usuario
             // Esto previene ataques de Session Fixation
             regenerateSession(ctx);
@@ -112,7 +128,20 @@ public class AuthController {
 
             ctx.redirect("/index");
         } else {
-            ctx.attribute("error", "Usuario o contraseña incorrectos");
+            // SECURITY: Registrar el intento fallido
+            LoginAttemptService.loginFailed(username, ipAddress);
+
+            // Informar al usuario cuántos intentos le quedan
+            int remainingAttempts = LoginAttemptService.getRemainingAttempts(username);
+
+            if (remainingAttempts > 0) {
+                ctx.attribute("error", "Usuario o contraseña incorrectos. " +
+                        "Tienes " + remainingAttempts + " intento(s) restante(s) antes del bloqueo temporal.");
+            } else {
+                ctx.attribute("error", "Usuario o contraseña incorrectos. " +
+                        "Tu cuenta ha sido bloqueada temporalmente por múltiples intentos fallidos.");
+            }
+
             ctx.render("login.html");
         }
     }
