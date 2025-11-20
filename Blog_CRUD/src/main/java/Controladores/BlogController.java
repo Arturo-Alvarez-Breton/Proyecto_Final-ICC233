@@ -1,6 +1,7 @@
 package Controladores;
 
 import app.java.DatabaseUtil;
+import app.java.InputConstraints;
 import io.javalin.http.Context;
 import modelos.Articulo;
 import modelos.Etiqueta;
@@ -28,17 +29,30 @@ public class BlogController {
             return;
         }
 
+        String titulo = ctx.formParam("titulo");
+        String cuerpo = ctx.formParam("contenido");
+        String etiquetasStr = ctx.formParam("etiquetas");
+
+        // Validate lengths
+        if (titulo == null || titulo.trim().isEmpty() || InputConstraints.exceeds(titulo, InputConstraints.TITULO_MAX)) {
+            renderMisArticulosPage(ctx, usuario, "Título inválido o demasiado largo (máx " + InputConstraints.TITULO_MAX + " caracteres)");
+            return;
+        }
+        if (cuerpo == null || cuerpo.trim().isEmpty() || InputConstraints.exceeds(cuerpo, InputConstraints.ARTICULO_CUERPO_MAX)) {
+            renderMisArticulosPage(ctx, usuario, "Contenido inválido o demasiado largo (máx " + InputConstraints.ARTICULO_CUERPO_MAX + " caracteres)");
+            return;
+        }
+
         EntityManager em = DatabaseUtil.getEntityManager();
         try {
             em.getTransaction().begin();
 
             Articulo articulo = new Articulo();
-            articulo.setTitulo(ctx.formParam("titulo"));
-            articulo.setCuerpo(ctx.formParam("contenido"));
+            articulo.setTitulo(titulo.trim());
+            articulo.setCuerpo(cuerpo.trim());
             articulo.setAutor(usuario);
             articulo.setFecha(new Date());
 
-            String etiquetasStr = ctx.formParam("etiquetas");
             if (etiquetasStr != null && !etiquetasStr.isEmpty()) {
                 Set<Etiqueta> etiquetas = procesarEtiquetas(em, etiquetasStr);
                 articulo.setEtiquetas(new ArrayList<>(etiquetas));
@@ -49,8 +63,8 @@ public class BlogController {
 
             ctx.redirect("/mis-articulos");
         } catch (Exception e) {
-            ctx.attribute("error", "Error al crear artículo");
-            ctx.render("mis-articulos.html");
+            if (em.getTransaction().isActive()) em.getTransaction().rollback();
+            renderMisArticulosPage(ctx, usuario, "Error al crear artículo");
         } finally {
             em.close();
         }
@@ -61,6 +75,10 @@ public class BlogController {
         for (String nombre : etiquetasStr.split(",")) {
             nombre = nombre.trim();
             if (!nombre.isEmpty()) {
+                if (InputConstraints.exceeds(nombre, InputConstraints.ETIQUETA_MAX)) {
+                    // skip overly long tags
+                    continue;
+                }
                 String finalNombre = nombre;
                 Etiqueta etiqueta = em.createQuery(
                                 "SELECT e FROM Etiqueta e WHERE e.etiqueta = :nombre", Etiqueta.class)
@@ -123,6 +141,18 @@ public class BlogController {
         }
 
         long id = Long.parseLong(ctx.pathParam("id"));
+        String titulo = ctx.formParam("titulo");
+        String cuerpo = ctx.formParam("contenido");
+
+        // Validate lengths
+        if (titulo == null || titulo.trim().isEmpty() || InputConstraints.exceeds(titulo, InputConstraints.TITULO_MAX)) {
+            renderMisArticulosPage(ctx, usuario, "Título inválido o demasiado largo (máx " + InputConstraints.TITULO_MAX + " caracteres)");
+            return;
+        }
+        if (cuerpo == null || cuerpo.trim().isEmpty() || InputConstraints.exceeds(cuerpo, InputConstraints.ARTICULO_CUERPO_MAX)) {
+            renderMisArticulosPage(ctx, usuario, "Contenido inválido o demasiado largo (máx " + InputConstraints.ARTICULO_CUERPO_MAX + " caracteres)");
+            return;
+        }
 
         EntityManager em = DatabaseUtil.getEntityManager();
         try {
@@ -133,13 +163,16 @@ public class BlogController {
             if (articulo != null &&
                     (usuario.isAdmin() || articulo.getAutor().getId().equals(usuario.getId()))) {
 
-                articulo.setTitulo(ctx.formParam("titulo"));
-                articulo.setCuerpo(ctx.formParam("contenido"));
+                articulo.setTitulo(titulo.trim());
+                articulo.setCuerpo(cuerpo.trim());
                 em.merge(articulo);
             }
 
             em.getTransaction().commit();
             ctx.redirect("/mis-articulos");
+        } catch (Exception e) {
+            if (em.getTransaction().isActive()) em.getTransaction().rollback();
+            renderMisArticulosPage(ctx, usuario, "Error al actualizar artículo");
         } finally {
             em.close();
         }
@@ -168,6 +201,32 @@ public class BlogController {
             } else {
                 ctx.redirect("/mis-articulos");
             }
+        } finally {
+            em.close();
+        }
+    }
+
+    // Helper to render mis-articulos with articles + usuario + error message
+    private static void renderMisArticulosPage(Context ctx, User usuario, String errorMessage) {
+        EntityManager em = DatabaseUtil.getEntityManager();
+        try {
+            List<Articulo> articulos;
+            if (usuario != null && usuario.isAdmin()) {
+                articulos = em.createQuery("SELECT a FROM Articulo a ORDER BY a.fecha DESC", Articulo.class)
+                        .getResultList();
+            } else if (usuario != null) {
+                articulos = em.createQuery("SELECT a FROM Articulo a WHERE a.autor.id = :id ORDER BY a.fecha DESC", Articulo.class)
+                        .setParameter("id", usuario.getId())
+                        .getResultList();
+            } else {
+                articulos = List.of();
+            }
+
+            Map<String, Object> model = new HashMap<>();
+            model.put("articulos", articulos);
+            model.put("usuario", usuario);
+            model.put("error", errorMessage);
+            ctx.render("mis-articulos.html", model);
         } finally {
             em.close();
         }

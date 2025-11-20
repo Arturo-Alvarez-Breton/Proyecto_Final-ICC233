@@ -9,11 +9,11 @@ public class Articulo {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false)
+    @Column(nullable = false, length = 200)
     private String titulo;
 
     @Lob
-    @Column(nullable = false)
+    @Column(nullable = false, length = 10000)
     private String cuerpo;
 
     // La relación con User usa "autor_id" para referenciar al campo id de User

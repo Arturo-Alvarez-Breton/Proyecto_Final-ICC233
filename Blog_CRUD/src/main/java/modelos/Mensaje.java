@@ -10,9 +10,8 @@ public class Mensaje {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    // Contenido del mensaje (se usa @Lob para mensajes extensos)
-    @Lob
-    @Column(nullable = false)
+    // Contenido del mensaje
+    @Column(nullable = false, length = 2000)
     private String contenido;
 
     // Usuario autenticado que envía el mensaje. Si el mensaje es de un usuario no autenticado, este campo puede ser null.
@@ -21,8 +20,7 @@ public class Mensaje {
     private User emisor;
 
     // Campo para identificar al emisor cuando el usuario no está autenticado.
-    // Se puede asignar un identificador único (por ejemplo, un UUID o un código generado en el cliente)
-    @Column(name = "emisor_anonimo")
+    @Column(name = "emisor_anonimo", length = 100)
     private String emisorAnonimo;
 
     // Usuario receptor, para asociar el mensaje a una conversación en particular

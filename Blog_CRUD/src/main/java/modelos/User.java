@@ -14,12 +14,14 @@ public class User {
     private Long id;
 
     // El username sigue siendo único
-    @Column(unique = true, nullable = false)
+    @Column(unique = true, nullable = false, length = 50)
     private String username;
 
     // Store hashed password (bcrypt)
+    @Column(nullable = false, length = 128)
     private String password;
 
+    @Column(length = 100)
     private String nombre;
     private boolean admin;
     private boolean autor;
@@ -31,10 +33,10 @@ public class User {
     private List<Comentario> comentarios = new ArrayList<>();
 
     // campos para la foto
-    @Column(nullable = true)
+    @Column(nullable = true, length = 255)
     private String fotoNombre;
 
-    @Column(nullable = true)
+    @Column(nullable = true, length = 100)
     private String fotoMimeType;
 
     @Lob

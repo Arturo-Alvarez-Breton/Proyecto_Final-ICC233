@@ -8,8 +8,7 @@ public class Comentario {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Lob
-    @Column(nullable = false)
+    @Column(nullable = false, length = 2000)
     private String comentario;
 
     // La relación se mantiene; la columna "autor_id" ahora apunta a User.id

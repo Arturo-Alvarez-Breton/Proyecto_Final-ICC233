@@ -1,6 +1,7 @@
 package Controladores;
 
 import app.java.DatabaseUtil;
+import app.java.InputConstraints;
 import io.javalin.http.Context;
 import modelos.Articulo;
 import modelos.Comentario;
@@ -22,15 +23,45 @@ public class CommentController {
             return;
         }
 
+        long articuloId;
+        try {
+            articuloId = Long.parseLong(Objects.requireNonNull(ctx.formParam("articuloId")));
+        } catch (Exception e) {
+            ctx.status(400).result("ID de artículo inválido");
+            return;
+        }
+
+        String comentarioTexto = ctx.formParam("comentario");
+        if (comentarioTexto == null || comentarioTexto.trim().isEmpty()) {
+            ctx.status(400).result("El comentario no puede estar vacío");
+            return;
+        }
+
+        // Validate maximum length
+        if (InputConstraints.exceeds(comentarioTexto, InputConstraints.COMENTARIO_MAX)) {
+            // Load article to render the page with an error message
+            EntityManager em = DatabaseUtil.getEntityManager();
+            try {
+                Articulo articulo = em.find(Articulo.class, articuloId);
+                Map<String,Object> model = new HashMap<>();
+                model.put("articulo", articulo);
+                model.put("usuario", usuario);
+                model.put("error", "El comentario supera el máximo de " + InputConstraints.COMENTARIO_MAX + " caracteres");
+                ctx.render("articulo.html", model);
+            } finally {
+                em.close();
+            }
+            return;
+        }
+
         EntityManager em = DatabaseUtil.getEntityManager();
         try {
             em.getTransaction().begin();
 
-            long articuloId = Long.parseLong(Objects.requireNonNull(ctx.formParam("articuloId")));
             Articulo articulo = em.find(Articulo.class, articuloId);
 
             Comentario comentario = new Comentario();
-            comentario.setComentario(ctx.formParam("comentario"));
+            comentario.setComentario(comentarioTexto.trim());
             comentario.setAutor(usuario);
             comentario.setArticulo(articulo);
 

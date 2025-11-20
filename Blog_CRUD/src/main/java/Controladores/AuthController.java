@@ -1,6 +1,7 @@
 package Controladores;
 
 import app.java.DatabaseUtil;
+import app.java.InputConstraints;
 import io.javalin.http.Context;
 import modelos.User;
 import org.jasypt.util.text.BasicTextEncryptor;
@@ -160,6 +161,20 @@ public class AuthController {
         // Ahora se recibe el id en lugar del originalUsername
         Long id = Long.parseLong(ctx.formParam("id"));
 
+        // Validate lengths
+        Map<String, String> validation = InputConstraints.validateUserInput(username, nombre, password);
+        if (!validation.isEmpty()) {
+            ctx.attribute("error", validation.values().iterator().next());
+            EntityManager em = DatabaseUtil.getEntityManager();
+            try {
+                List<User> usuarios = em.createQuery("SELECT u FROM User u", User.class).getResultList();
+                ctx.render("usuarios.html", Map.of("usuarios", usuarios));
+            } finally {
+                em.close();
+            }
+            return;
+        }
+
         EntityManager em = DatabaseUtil.getEntityManager();
         try {
             em.getTransaction().begin();
@@ -206,6 +221,20 @@ public class AuthController {
         boolean isAdmin = ctx.formParam("admin") != null;
         boolean isAutor = ctx.formParam("autor") != null;
 
+        // Validate lengths
+        Map<String, String> validation = InputConstraints.validateUserInput(username, nombre, password);
+        if (!validation.isEmpty()) {
+            ctx.attribute("error", validation.values().iterator().next());
+            EntityManager em = DatabaseUtil.getEntityManager();
+            try {
+                List<User> usuarios = em.createQuery("SELECT u FROM User u", User.class).getResultList();
+                ctx.render("usuarios.html", Map.of("usuarios", usuarios));
+            } finally {
+                em.close();
+            }
+            return;
+        }
+
         EntityManager em = DatabaseUtil.getEntityManager();
         try {
             em.getTransaction().begin();
@@ -247,6 +276,14 @@ public class AuthController {
         String nombre = ctx.formParam("nombre");
         String username = ctx.formParam("username");
         String password = ctx.formParam("password");
+
+        // Validate lengths
+        Map<String, String> validation = InputConstraints.validateUserInput(username, nombre, password);
+        if (!validation.isEmpty()) {
+            ctx.attribute("error", validation.values().iterator().next());
+            ctx.render("registro.html");
+            return;
+        }
 
         EntityManager em = DatabaseUtil.getEntityManager();
         try {
@@ -346,9 +383,21 @@ public class AuthController {
             return;
         }
 
+        // Validate lengths for nombre and username
+        String nombre = ctx.formParam("nombre");
+        String username = ctx.formParam("username");
+        Map<String, String> validation = InputConstraints.validateUserInput(username, nombre, null);
+        if (!validation.isEmpty()) {
+            // Return to perfil page with the error message and keep entered values
+            usuario.setNombre(nombre);
+            usuario.setUsername(username);
+            ctx.render("perfil.html", Map.of("usuario", usuario, "error", validation.values().iterator().next()));
+            return;
+        }
+
         // Actualizar datos básicos
-        usuario.setNombre(ctx.formParam("nombre"));
-        usuario.setUsername(ctx.formParam("username"));
+        usuario.setNombre(nombre);
+        usuario.setUsername(username);
 
         UsuarioServicios.actualizarUsuario(usuario);
         ctx.sessionAttribute("usuario", usuario); // Actualizar sesión

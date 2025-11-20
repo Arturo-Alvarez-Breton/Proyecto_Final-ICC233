@@ -1,6 +1,7 @@
 package Controladores;
 
 import app.java.DatabaseUtil;
+import app.java.InputConstraints;
 import io.javalin.http.Context;
 import modelos.Articulo;
 import modelos.Etiqueta;
@@ -32,6 +33,12 @@ public class TagController {
         long articuloId = Long.parseLong(Objects.requireNonNull(ctx.formParam("articuloId")));
         String nombre = Objects.requireNonNull(ctx.formParam("etiqueta")).trim();
 
+        // Validate tag length
+        if (InputConstraints.exceeds(nombre, InputConstraints.ETIQUETA_MAX)) {
+            ctx.status(400).result("La etiqueta supera el máximo de " + InputConstraints.ETIQUETA_MAX + " caracteres");
+            return;
+        }
+
         EntityManager em = DatabaseUtil.getEntityManager();
         try {
             em.getTransaction().begin();
@@ -45,6 +52,9 @@ public class TagController {
 
             em.getTransaction().commit();
             ctx.status(201).result("Etiqueta agregada");
+        } catch (Exception e) {
+            if (em.getTransaction().isActive()) em.getTransaction().rollback();
+            ctx.status(500).result("Error al agregar la etiqueta");
         } finally {
             em.close();
         }

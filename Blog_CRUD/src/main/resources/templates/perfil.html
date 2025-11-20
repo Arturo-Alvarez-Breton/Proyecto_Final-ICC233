@@ -85,6 +85,11 @@
           <h4>Información del Perfil</h4>
         </div>
         <div class="card-body">
+          <!-- Display validation error if present -->
+          <div th:if="${error}" class="alert alert-danger" role="alert">
+            <span th:text="${error}"></span>
+          </div>
+
           <form th:action="@{/actualizar-perfil}" method="post">
             <div class="mb-3">
               <label class="form-label">Nombre</label>
