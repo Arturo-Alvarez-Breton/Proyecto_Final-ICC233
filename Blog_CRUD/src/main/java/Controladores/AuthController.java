@@ -29,6 +29,9 @@ public class AuthController {
             encryptor.setPassword(ENCRYPTION_PASSWORD);
             String username = encryptor.decrypt(encryptedUsername);
 
+            // Trim username from cookie and authenticate
+            if (username != null) username = username.trim();
+
             // Autenticar automáticamente al usuario
             EntityManager em = DatabaseUtil.getEntityManager();
             try {
@@ -56,8 +59,15 @@ public class AuthController {
         String password = ctx.formParam("password");
         boolean recordar = ctx.formParam("recordar") != null; // Verificar si el checkbox está marcado
 
-        // Sanitize username to avoid injection
+        // Sanitize username to avoid injection and trim whitespace
         username = InputSanitizer.stripTags(username);
+        if (username != null) username = username.trim();
+
+        if (username == null || username.isEmpty()) {
+            ctx.attribute("error", "El nombre de usuario no puede estar vacío");
+            ctx.render("login.html");
+            return;
+        }
 
         // Use UsuarioServicios which checks bcrypt-hashed passwords
         User usuario = UsuarioServicios.autenticar(username, password);
@@ -165,9 +175,22 @@ public class AuthController {
         // Ahora se recibe el id en lugar del originalUsername
         Long id = Long.parseLong(ctx.formParam("id"));
 
-        // Sanitize inputs
+        // Sanitize inputs and trim username
         nombre = InputSanitizer.stripTags(nombre);
         username = InputSanitizer.stripTags(username);
+        if (username != null) username = username.trim();
+
+        if (username == null || username.isEmpty()) {
+            ctx.attribute("error", "El nombre de usuario no puede estar vacío");
+            EntityManager em = DatabaseUtil.getEntityManager();
+            try {
+                List<User> usuarios = em.createQuery("SELECT u FROM User u", User.class).getResultList();
+                ctx.render("usuarios.html", Map.of("usuarios", usuarios));
+            } finally {
+                em.close();
+            }
+            return;
+        }
 
         // Validate lengths
         Map<String, String> validation = InputConstraints.validateUserInput(username, nombre, password);
@@ -229,9 +252,22 @@ public class AuthController {
         boolean isAdmin = ctx.formParam("admin") != null;
         boolean isAutor = ctx.formParam("autor") != null;
 
-        // Sanitize inputs
+        // Sanitize inputs and trim username
         nombre = InputSanitizer.stripTags(nombre);
         username = InputSanitizer.stripTags(username);
+        if (username != null) username = username.trim();
+
+        if (username == null || username.isEmpty()) {
+            ctx.attribute("error", "El nombre de usuario no puede estar vacío");
+            EntityManager em = DatabaseUtil.getEntityManager();
+            try {
+                List<User> usuarios = em.createQuery("SELECT u FROM User u", User.class).getResultList();
+                ctx.render("usuarios.html", Map.of("usuarios", usuarios));
+            } finally {
+                em.close();
+            }
+            return;
+        }
 
         // Validate lengths
         Map<String, String> validation = InputConstraints.validateUserInput(username, nombre, password);
@@ -289,14 +325,22 @@ public class AuthController {
         String username = ctx.formParam("username");
         String password = ctx.formParam("password");
 
-        // Sanitize inputs
+        // Sanitize inputs and trim username
         nombre = InputSanitizer.stripTags(nombre);
         username = InputSanitizer.stripTags(username);
+        if (username != null) username = username.trim();
 
         // Validate lengths
         Map<String, String> validation = InputConstraints.validateUserInput(username, nombre, password);
         if (!validation.isEmpty()) {
             ctx.attribute("error", validation.values().iterator().next());
+            ctx.render("registro.html");
+            return;
+        }
+
+        // Ensure username is not empty or only spaces
+        if (username == null || username.isEmpty()) {
+            ctx.attribute("error", "El nombre de usuario no puede estar vacío");
             ctx.render("registro.html");
             return;
         }
@@ -406,6 +450,7 @@ public class AuthController {
         // Sanitize inputs
         nombre = InputSanitizer.stripTags(nombre);
         username = InputSanitizer.stripTags(username);
+        if (username != null) username = username.trim();
 
         Map<String, String> validation = InputConstraints.validateUserInput(username, nombre, null);
         if (!validation.isEmpty()) {
@@ -413,6 +458,14 @@ public class AuthController {
             usuario.setNombre(nombre);
             usuario.setUsername(username);
             ctx.render("perfil.html", Map.of("usuario", usuario, "error", validation.values().iterator().next()));
+            return;
+        }
+
+        // Ensure username is not empty
+        if (username == null || username.isEmpty()) {
+            usuario.setNombre(nombre);
+            usuario.setUsername(username);
+            ctx.render("perfil.html", Map.of("usuario", usuario, "error", "El nombre de usuario no puede estar vacío"));
             return;
         }
 
