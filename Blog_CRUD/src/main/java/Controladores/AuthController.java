@@ -411,6 +411,22 @@ public class AuthController {
             for (var uploadedFile : ctx.uploadedFiles("foto")) {
                 if (uploadedFile != null && !uploadedFile.filename().isEmpty()) {
                     try {
+                        // SECURITY: Validate file size to prevent DoS attacks
+                        long fileSize = uploadedFile.size();
+                        if (InputConstraints.exceedsMaxFileSize(fileSize)) {
+                            ctx.attribute("error", "La foto es demasiado grande. Tamaño máximo permitido: " + InputConstraints.getMaxFileSizeFormatted());
+                            ctx.render("registro.html");
+                            return;
+                        }
+
+                        // Validate file type (only images)
+                        String contentType = uploadedFile.contentType();
+                        if (contentType == null || !contentType.startsWith("image/")) {
+                            ctx.attribute("error", "El archivo debe ser una imagen válida");
+                            ctx.render("registro.html");
+                            return;
+                        }
+
                         byte[] bytes = uploadedFile.content().readAllBytes();
                         String encodedString = Base64.getEncoder().encodeToString(bytes);
 
@@ -517,8 +533,23 @@ public class AuthController {
 
     public static void actualizarFoto(Context ctx) {
         User usuario = ctx.sessionAttribute("usuario");
+
         ctx.uploadedFiles("foto").forEach(uploadedFile -> {
             try {
+                // SECURITY: Validate file size to prevent DoS attacks
+                long fileSize = uploadedFile.size();
+                if (InputConstraints.exceedsMaxFileSize(fileSize)) {
+                    ctx.status(400).result("La foto es demasiado grande. Tamaño máximo permitido: " + InputConstraints.getMaxFileSizeFormatted());
+                    return;
+                }
+
+                // Validate file type (only images)
+                String contentType = uploadedFile.contentType();
+                if (contentType == null || !contentType.startsWith("image/")) {
+                    ctx.status(400).result("El archivo debe ser una imagen válida");
+                    return;
+                }
+
                 byte[] bytes = uploadedFile.content().readAllBytes();
                 String encodedString = Base64.getEncoder().encodeToString(bytes);
 

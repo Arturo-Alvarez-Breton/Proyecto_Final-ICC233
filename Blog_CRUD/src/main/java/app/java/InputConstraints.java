@@ -14,6 +14,7 @@ public final class InputConstraints {
     // Files / images
     public static final int FOTO_NOMBRE_MAX = 255;
     public static final int FOTO_MIMETYPE_MAX = 100;
+    public static final long MAX_FILE_SIZE_BYTES = 2 * 1024 * 1024; // 2MB limit
 
     // Articles
     public static final int TITULO_MAX = 200;
@@ -40,5 +41,20 @@ public final class InputConstraints {
         if (password != null && password.length() > 1000) errors.put("password", "La contraseña es demasiado larga");
         return errors;
     }
-}
 
+    /**
+     * Validates file size to prevent DoS attacks
+     * @param sizeInBytes The size of the file in bytes
+     * @return true if the file size exceeds the maximum allowed, false otherwise
+     */
+    public static boolean exceedsMaxFileSize(long sizeInBytes) {
+        return sizeInBytes > MAX_FILE_SIZE_BYTES;
+    }
+
+    /**
+     * Returns a human-readable file size limit
+     */
+    public static String getMaxFileSizeFormatted() {
+        return (MAX_FILE_SIZE_BYTES / (1024 * 1024)) + "MB";
+    }
+}
