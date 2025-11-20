@@ -2,6 +2,7 @@ package Controladores;
 
 import app.java.DatabaseUtil;
 import app.java.InputConstraints;
+import app.java.InputSanitizer;
 import io.javalin.http.Context;
 import modelos.Articulo;
 import modelos.Etiqueta;
@@ -33,6 +34,10 @@ public class BlogController {
         String cuerpo = ctx.formParam("contenido");
         String etiquetasStr = ctx.formParam("etiquetas");
 
+        // Sanitize inputs
+        titulo = InputSanitizer.stripTags(titulo);
+        cuerpo = InputSanitizer.stripTags(cuerpo);
+
         // Validate lengths
         if (titulo == null || titulo.trim().isEmpty() || InputConstraints.exceeds(titulo, InputConstraints.TITULO_MAX)) {
             renderMisArticulosPage(ctx, usuario, "Título inválido o demasiado largo (máx " + InputConstraints.TITULO_MAX + " caracteres)");
@@ -54,6 +59,7 @@ public class BlogController {
             articulo.setFecha(new Date());
 
             if (etiquetasStr != null && !etiquetasStr.isEmpty()) {
+                // sanitize and process tags
                 Set<Etiqueta> etiquetas = procesarEtiquetas(em, etiquetasStr);
                 articulo.setEtiquetas(new ArrayList<>(etiquetas));
             }
@@ -75,6 +81,8 @@ public class BlogController {
         for (String nombre : etiquetasStr.split(",")) {
             nombre = nombre.trim();
             if (!nombre.isEmpty()) {
+                // sanitize tag
+                nombre = InputSanitizer.stripTags(nombre);
                 if (InputConstraints.exceeds(nombre, InputConstraints.ETIQUETA_MAX)) {
                     // skip overly long tags
                     continue;
@@ -143,6 +151,10 @@ public class BlogController {
         long id = Long.parseLong(ctx.pathParam("id"));
         String titulo = ctx.formParam("titulo");
         String cuerpo = ctx.formParam("contenido");
+
+        // Sanitize inputs
+        titulo = InputSanitizer.stripTags(titulo);
+        cuerpo = InputSanitizer.stripTags(cuerpo);
 
         // Validate lengths
         if (titulo == null || titulo.trim().isEmpty() || InputConstraints.exceeds(titulo, InputConstraints.TITULO_MAX)) {

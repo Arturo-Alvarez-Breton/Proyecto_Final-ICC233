@@ -2,6 +2,7 @@ package Controladores;
 
 import app.java.DatabaseUtil;
 import app.java.InputConstraints;
+import app.java.InputSanitizer;
 import io.javalin.http.Context;
 import modelos.User;
 import org.jasypt.util.text.BasicTextEncryptor;
@@ -54,6 +55,9 @@ public class AuthController {
         String username = ctx.formParam("username");
         String password = ctx.formParam("password");
         boolean recordar = ctx.formParam("recordar") != null; // Verificar si el checkbox está marcado
+
+        // Sanitize username to avoid injection
+        username = InputSanitizer.stripTags(username);
 
         // Use UsuarioServicios which checks bcrypt-hashed passwords
         User usuario = UsuarioServicios.autenticar(username, password);
@@ -161,6 +165,10 @@ public class AuthController {
         // Ahora se recibe el id en lugar del originalUsername
         Long id = Long.parseLong(ctx.formParam("id"));
 
+        // Sanitize inputs
+        nombre = InputSanitizer.stripTags(nombre);
+        username = InputSanitizer.stripTags(username);
+
         // Validate lengths
         Map<String, String> validation = InputConstraints.validateUserInput(username, nombre, password);
         if (!validation.isEmpty()) {
@@ -221,6 +229,10 @@ public class AuthController {
         boolean isAdmin = ctx.formParam("admin") != null;
         boolean isAutor = ctx.formParam("autor") != null;
 
+        // Sanitize inputs
+        nombre = InputSanitizer.stripTags(nombre);
+        username = InputSanitizer.stripTags(username);
+
         // Validate lengths
         Map<String, String> validation = InputConstraints.validateUserInput(username, nombre, password);
         if (!validation.isEmpty()) {
@@ -276,6 +288,10 @@ public class AuthController {
         String nombre = ctx.formParam("nombre");
         String username = ctx.formParam("username");
         String password = ctx.formParam("password");
+
+        // Sanitize inputs
+        nombre = InputSanitizer.stripTags(nombre);
+        username = InputSanitizer.stripTags(username);
 
         // Validate lengths
         Map<String, String> validation = InputConstraints.validateUserInput(username, nombre, password);
@@ -386,6 +402,11 @@ public class AuthController {
         // Validate lengths for nombre and username
         String nombre = ctx.formParam("nombre");
         String username = ctx.formParam("username");
+
+        // Sanitize inputs
+        nombre = InputSanitizer.stripTags(nombre);
+        username = InputSanitizer.stripTags(username);
+
         Map<String, String> validation = InputConstraints.validateUserInput(username, nombre, null);
         if (!validation.isEmpty()) {
             // Return to perfil page with the error message and keep entered values

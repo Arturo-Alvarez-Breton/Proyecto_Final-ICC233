@@ -24,6 +24,8 @@ import java.util.Date;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
+import app.java.InputSanitizer;
+
 public class App {
 
     // Conjunto para almacenar las sesiones activas del WebSocket
@@ -158,8 +160,9 @@ public class App {
                 List<Map<String, Object>> chats = new ArrayList<>();
                 for (Object[] chat : chatsActivos) {
                     Map<String, Object> chatMap = new HashMap<>();
-                    chatMap.put("nombre", chat[0]);
-                    chatMap.put("alias", chat[1]);
+                    // Encode textual output
+                    chatMap.put("nombre", InputSanitizer.encodeForHtml((String) chat[0]));
+                    chatMap.put("alias", InputSanitizer.encodeForHtml((String) chat[1]));
                     chats.add(chatMap);
                 }
                 ctx.json(chats);
@@ -179,7 +182,17 @@ public class App {
                         )
                         .setParameter("alias", alias)
                         .getResultList();
-                ctx.json(mensajes);
+                // Map to safe DTOs
+                List<Map<String, Object>> safe = mensajes.stream().map(m -> {
+                    Map<String, Object> map = new HashMap<>();
+                    map.put("id", m.getId());
+                    map.put("contenido", InputSanitizer.encodeForHtml(m.getContenido()));
+                    map.put("fecha", m.getFecha());
+                    String autor = m.getEmisor() != null ? (m.getEmisor().getUsername() != null ? m.getEmisor().getUsername() : m.getEmisor().getNombre()) : m.getEmisorAnonimo();
+                    map.put("autor", InputSanitizer.encodeForHtml(autor));
+                    return map;
+                }).collect(Collectors.toList());
+                ctx.json(safe);
             } finally {
                 em.close();
             }
@@ -203,6 +216,10 @@ public class App {
                 return;
             }
 
+            // Sanitize inputs
+            contenido = InputSanitizer.stripTags(contenido).trim();
+            receptorUsername = InputSanitizer.stripTags(receptorUsername).trim();
+
             EntityManager em = DatabaseUtil.getEntityManager();
             try {
                 em.getTransaction().begin();
@@ -216,7 +233,12 @@ public class App {
                 mensaje.setReceptor(receptor);
                 em.persist(mensaje);
                 em.getTransaction().commit();
-                ctx.json(mensaje);
+                // Return a safe DTO
+                Map<String, Object> resp = new HashMap<>();
+                resp.put("id", mensaje.getId());
+                resp.put("contenido", InputSanitizer.encodeForHtml(mensaje.getContenido()));
+                resp.put("autor", InputSanitizer.encodeForHtml(admin.getUsername()));
+                ctx.json(resp);
             } catch (Exception e) {
                 if (em.getTransaction().isActive()) {
                     em.getTransaction().rollback();
@@ -458,7 +480,17 @@ public class App {
                     try {
                         List<Mensaje> mensajes = em.createQuery("SELECT m FROM Mensaje m ORDER BY m.fecha ASC", Mensaje.class)
                                 .getResultList();
-                        String json = new ObjectMapper().writeValueAsString(mensajes);
+                        // Convert to safe DTOs
+                        List<Map<String,Object>> safe = mensajes.stream().map(m -> {
+                            Map<String,Object> map = new HashMap<>();
+                            map.put("id", m.getId());
+                            map.put("contenido", InputSanitizer.encodeForHtml(m.getContenido()));
+                            String autor = m.getEmisor() != null ? (m.getEmisor().getUsername() != null ? m.getEmisor().getUsername() : m.getEmisor().getNombre()) : m.getEmisorAnonimo();
+                            map.put("autor", InputSanitizer.encodeForHtml(autor));
+                            map.put("fecha", m.getFecha());
+                            return map;
+                        }).collect(Collectors.toList());
+                        String json = new ObjectMapper().writeValueAsString(safe);
                         ctx.send(json);
                     } catch (Exception e) {
                         e.printStackTrace();
@@ -481,6 +513,10 @@ public class App {
                     String contenido = msgData.get("contenido");
                     String receptorUsername = msgData.get("receptor");
 
+                    // Sanitize inputs
+                    contenido = InputSanitizer.stripTags(contenido).trim();
+                    receptorUsername = InputSanitizer.stripTags(receptorUsername).trim();
+
                     EntityManager em = DatabaseUtil.getEntityManager();
                     try {
                         User receptor = em.createQuery("SELECT u FROM User u WHERE u.username = :username", User.class)
@@ -495,8 +531,14 @@ public class App {
                         em.persist(mensaje);
                         em.getTransaction().commit();
 
-                        // Convertir el mensaje a JSON y hacer broadcast
-                        String mensajeJson = mapper.writeValueAsString(mensaje);
+                        // Convertir el mensaje a JSON and broadcast safe DTO
+                        Map<String,Object> dto = new HashMap<>();
+                        dto.put("id", mensaje.getId());
+                        dto.put("contenido", InputSanitizer.encodeForHtml(mensaje.getContenido()));
+                        dto.put("autor", InputSanitizer.encodeForHtml(emisor.getUsername()));
+                        dto.put("receptor", InputSanitizer.encodeForHtml(receptor.getUsername()));
+                        dto.put("fecha", mensaje.getFecha());
+                        String mensajeJson = mapper.writeValueAsString(dto);
                         wsSessions.forEach(session -> {
                             try {
                                 session.send(mensajeJson);
@@ -518,17 +560,19 @@ public class App {
         return articulos.stream().map(a -> {
             Map<String, Object> dto = new HashMap<>();
             dto.put("id", a.getId());
-            dto.put("titulo", a.getTitulo());
+            dto.put("titulo", InputSanitizer.encodeForHtml(a.getTitulo()));
             String cuerpo = a.getCuerpo();
             if (cuerpo.length() > 70) {
-                String truncated = cuerpo.substring(0, 70) + "... <a href='/articulo/" + a.getId() + "'>Leer más</a>";
-                dto.put("cuerpo", truncated);
+                String truncated = InputSanitizer.encodeForHtml(cuerpo.substring(0, 70));
+                // append safe link
+                String withLink = truncated + "... <a href='/articulo/" + a.getId() + "'>Leer más</a>";
+                dto.put("cuerpo", withLink);
             } else {
-                dto.put("cuerpo", cuerpo);
+                dto.put("cuerpo", InputSanitizer.encodeForHtml(cuerpo));
             }
             dto.put("fecha", a.getFecha());
             if (a.getAutor() != null) {
-                dto.put("autor", a.getAutor().getNombre());
+                dto.put("autor", InputSanitizer.encodeForHtml(a.getAutor().getNombre()));
             }
             return dto;
         }).collect(Collectors.toList());

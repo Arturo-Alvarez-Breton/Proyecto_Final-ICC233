@@ -1,6 +1,7 @@
 package Controladores;
 
 import app.java.DatabaseUtil;
+import app.java.InputSanitizer;
 import io.javalin.http.Context;
 import modelos.Mensaje;
 import modelos.User;
@@ -44,8 +45,9 @@ public class MensajeController {
                 } else {
                     autor = m.getEmisorAnonimo();
                 }
-                mensajeMap.put("autor", autor);
-                mensajeMap.put("contenido", m.getContenido());
+                // Encode outputs to avoid XSS when rendered as HTML on client
+                mensajeMap.put("autor", InputSanitizer.encodeForHtml(autor));
+                mensajeMap.put("contenido", InputSanitizer.encodeForHtml(m.getContenido()));
                 mensajeMap.put("fecha", m.getFecha());
                 return mensajeMap;
             }).collect(Collectors.toList());
@@ -68,6 +70,9 @@ public class MensajeController {
                 return;
             }
 
+            // Sanitize input content
+            contenido = InputSanitizer.stripTags(contenido).trim();
+
             em.getTransaction().begin();
 
             User usuario = ctx.sessionAttribute("usuario");
@@ -77,6 +82,9 @@ public class MensajeController {
                 if (nombre == null || nombre.trim().isEmpty()) {
                     nombre = "Anónimo";
                 }
+                // sanitize anonymous name
+                nombre = InputSanitizer.stripTags(nombre).trim();
+
                 usuario = new User();
                 usuario.setNombre(nombre);
                 // Nota: Este usuario es temporal y no se persiste en la BD
@@ -84,7 +92,7 @@ public class MensajeController {
 
             Mensaje mensaje = new Mensaje();
             mensaje.setEmisor(usuario);
-            mensaje.setContenido(contenido.trim());
+            mensaje.setContenido(contenido);
             mensaje.setFecha(new Date(System.currentTimeMillis()));
 
             // Si se envía un receptor (para chats uno a uno) se podría procesar aquí:
@@ -176,8 +184,8 @@ public class MensajeController {
                 } else {
                     autor = m.getEmisorAnonimo();
                 }
-                mensajeMap.put("autor", autor);
-                mensajeMap.put("contenido", m.getContenido());
+                mensajeMap.put("autor", InputSanitizer.encodeForHtml(autor));
+                mensajeMap.put("contenido", InputSanitizer.encodeForHtml(m.getContenido()));
                 mensajeMap.put("fecha", m.getFecha());
                 return mensajeMap;
             }).collect(Collectors.toList());
