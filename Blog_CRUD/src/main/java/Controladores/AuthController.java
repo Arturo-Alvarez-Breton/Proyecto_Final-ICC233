@@ -21,6 +21,25 @@ public class AuthController {
     private static final String COOKIE_NAME = "rememberMe";
     private static final String ENCRYPTION_PASSWORD = "claveSecreta";
 
+    /**
+     * Regenera el ID de sesión para prevenir ataques de Session Fixation.
+     * Guarda los atributos de la sesión actual, invalida la sesión vieja,
+     * y crea una nueva sesión con los mismos atributos.
+     */
+    private static void regenerateSession(Context ctx) {
+        // Guardar los atributos de la sesión actual
+        Map<String, Object> sessionAttributes = ctx.sessionAttributeMap();
+
+        // Invalidar la sesión actual (esto genera un nuevo JSESSIONID)
+        ctx.req().getSession().invalidate();
+
+        // Crear una nueva sesión
+        ctx.req().getSession(true);
+
+        // Restaurar los atributos en la nueva sesión
+        sessionAttributes.forEach(ctx::sessionAttribute);
+    }
+
     public static void mostrarLogin(Context ctx) {
         // Verificar si hay una cookie de "Recordar usuario"
         String encryptedUsername = ctx.cookie(COOKIE_NAME);
@@ -40,6 +59,8 @@ public class AuthController {
                         .setParameter("username", username)
                         .getSingleResult();
 
+                // Regenerar sesión antes de establecer el usuario
+                regenerateSession(ctx);
                 ctx.sessionAttribute("usuario", usuario);
                 ctx.redirect("/index");
                 return;
@@ -72,6 +93,11 @@ public class AuthController {
         // Use UsuarioServicios which checks bcrypt-hashed passwords
         User usuario = UsuarioServicios.autenticar(username, password);
         if (usuario != null) {
+            // IMPORTANTE: Regenerar el ID de sesión ANTES de establecer el usuario
+            // Esto previene ataques de Session Fixation
+            regenerateSession(ctx);
+
+            // Ahora sí, establecer el usuario en la nueva sesión
             ctx.sessionAttribute("usuario", usuario);
 
             // Si el usuario marcó "Recordar usuario", crear una cookie encriptada
@@ -95,8 +121,8 @@ public class AuthController {
         // Eliminar la cookie "Recordar usuario"
         ctx.removeCookie(COOKIE_NAME);
 
-        // Invalidar la sesión
-        ctx.sessionAttribute("usuario", null);
+        // Invalidar la sesión completamente
+        ctx.req().getSession().invalidate();
         ctx.redirect("/login");
     }
 
