@@ -2,7 +2,9 @@ package servicios;
 
 import modelos.User;
 import app.java.DatabaseUtil;
+import app.java.PasswordUtil;
 import javax.persistence.EntityManager;
+import javax.persistence.NoResultException;
 import java.util.List;
 
 public class UsuarioServicios {
@@ -10,12 +12,17 @@ public class UsuarioServicios {
     public static User autenticar(String username, String password) {
         EntityManager em = DatabaseUtil.getEntityManager();
         try {
-            return em.createQuery(
-                            "SELECT u FROM User u WHERE u.username = :username AND u.password = :password", User.class)
+            User user = em.createQuery(
+                            "SELECT u FROM User u WHERE u.username = :username", User.class)
                     .setParameter("username", username)
-                    .setParameter("password", password)
                     .getSingleResult();
-        } catch (Exception e) {
+
+            if (user != null && password != null) {
+                boolean ok = PasswordUtil.checkPassword(password, user.getPassword());
+                if (ok) return user;
+            }
+            return null;
+        } catch (NoResultException e) {
             return null;
         } finally {
             em.close();

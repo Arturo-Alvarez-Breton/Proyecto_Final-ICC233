@@ -77,11 +77,33 @@ public class App {
         mapper.registerModule(new Hibernate5Module());
         mapper.disable(SerializationFeature.FAIL_ON_EMPTY_BEANS);
 
-        return Javalin.create(config -> {
+        Javalin javalin = Javalin.create(config -> {
             config.staticFiles.add("/static");
             config.fileRenderer(new JavalinThymeleaf(templateEngine));
             config.jsonMapper(new JavalinJackson(mapper, false));
-        }).start(7000);
+        });
+
+        // Read port from .env via DataSourceConfig, fallback to 7000
+        String portStr = DataSourceConfig.get("PORT");
+        int port = 7000;
+        try {
+            if (portStr != null && !portStr.isEmpty()) {
+                port = Integer.parseInt(portStr);
+            }
+        } catch (NumberFormatException ignored) {}
+
+        try {
+            javalin.start(port);
+            System.out.println("Javalin started on port " + port);
+        } catch (Exception e) {
+            System.err.println("Failed to bind to port " + port + ": " + e.getMessage());
+            System.err.println("On Windows you can check which process uses the port with:");
+            System.err.println("  netstat -ano | findstr :" + port);
+            System.err.println("Then stop the process (for example: taskkill /PID <pid> /F) or change the PORT in your .env file.");
+            throw e;
+        }
+
+        return javalin;
     }
 
     private static void configurarRutasMensajes(Javalin app) {

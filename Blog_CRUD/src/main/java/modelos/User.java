@@ -3,6 +3,7 @@ package modelos;
 import javax.persistence.*;
 import java.util.ArrayList;
 import java.util.List;
+import app.java.PasswordUtil;
 
 @Entity
 @Table(name = "usuarios")
@@ -12,12 +13,14 @@ public class User {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    // El username sigue siendo único, pero ahora es un atributo normal
+    // El username sigue siendo único
     @Column(unique = true, nullable = false)
     private String username;
 
-    private String nombre;
+    // Store hashed password (bcrypt)
     private String password;
+
+    private String nombre;
     private boolean admin;
     private boolean autor;
 
@@ -42,9 +45,9 @@ public class User {
     }
 
     public User(String username, String nombre, String password, boolean admin, boolean autor) {
-        this.username = username;
+        setUsername(username);
+        setPassword(password);
         this.nombre = nombre;
-        this.password = password;
         this.admin = admin;
         this.autor = autor;
     }
@@ -63,20 +66,28 @@ public class User {
         this.username = username;
     }
 
+    public String getPassword() {
+        return password;
+    }
+
+    /**
+     * Stores the bcrypt hash of the provided plain password.
+     * Do NOT store plain passwords.
+     */
+    public void setPassword(String password) {
+        if (password != null) {
+            this.password = PasswordUtil.hashPassword(password);
+        } else {
+            this.password = null;
+        }
+    }
+
     public String getNombre() {
         return nombre;
     }
 
     public void setNombre(String nombre) {
         this.nombre = nombre;
-    }
-
-    public String getPassword() {
-        return password;
-    }
-
-    public void setPassword(String password) {
-        this.password = password;
     }
 
     public boolean isAdmin() {

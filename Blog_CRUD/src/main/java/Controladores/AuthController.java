@@ -54,14 +54,9 @@ public class AuthController {
         String password = ctx.formParam("password");
         boolean recordar = ctx.formParam("recordar") != null; // Verificar si el checkbox está marcado
 
-        EntityManager em = DatabaseUtil.getEntityManager();
-        try {
-            User usuario = em.createQuery(
-                            "SELECT u FROM User u WHERE u.username = :username AND u.password = :password", User.class)
-                    .setParameter("username", username)
-                    .setParameter("password", password)
-                    .getSingleResult();
-
+        // Use UsuarioServicios which checks bcrypt-hashed passwords
+        User usuario = UsuarioServicios.autenticar(username, password);
+        if (usuario != null) {
             ctx.sessionAttribute("usuario", usuario);
 
             // Si el usuario marcó "Recordar usuario", crear una cookie encriptada
@@ -75,11 +70,9 @@ public class AuthController {
             }
 
             ctx.redirect("/index");
-        } catch (NoResultException e) {
+        } else {
             ctx.attribute("error", "Usuario o contraseña incorrectos");
             ctx.render("login.html");
-        } finally {
-            em.close();
         }
     }
 
