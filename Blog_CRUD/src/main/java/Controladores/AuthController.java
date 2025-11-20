@@ -121,8 +121,19 @@ public class AuthController {
         // Eliminar la cookie "Recordar usuario"
         ctx.removeCookie(COOKIE_NAME);
 
-        // Invalidar la sesión completamente
-        ctx.req().getSession().invalidate();
+        // Invalidar la sesión completamente (esto destruye el JSESSIONID en el servidor)
+        try {
+            ctx.req().getSession().invalidate();
+        } catch (IllegalStateException e) {
+            // La sesión ya estaba invalidada, continuar
+        }
+
+        // Eliminar explícitamente la cookie JSESSIONID del navegador del cliente
+        ctx.removeCookie("JSESSIONID");
+
+        // Alternativamente, establecer la cookie JSESSIONID con valor vacío y tiempo de expiración 0
+        ctx.cookie("JSESSIONID", "", 0);
+
         ctx.redirect("/login");
     }
 
